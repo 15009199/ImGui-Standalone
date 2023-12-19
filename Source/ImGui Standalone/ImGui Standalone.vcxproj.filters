@@ -48,6 +48,9 @@
     <ClCompile Include="ImGui\imgui_impl_win32.cpp">
       <Filter>Fichiers d%27en-tête\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="Logger.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ImGui\imconfig.h">
@@ -81,6 +84,9 @@
       <Filter>Fichiers d%27en-tête\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="pch.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="Logger.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
   </ItemGroup>

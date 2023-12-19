@@ -94,12 +94,15 @@ void UI::CleanupDeviceD3D() {
 LRESULT WINAPI UI::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     MyLogger::LogHRESULT(S_OK, "UI::WndProc called", __FILE__, __LINE__);
 
-    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) {
+        MyLogger::LogHRESULT(S_OK, "ImGui WndProcHandler handled the message", __FILE__, __LINE__);
         return true;
+    }
 
     switch (msg) {
     case WM_SIZE:
         if (pd3dDevice != nullptr && wParam != SIZE_MINIMIZED) {
+            MyLogger::LogHRESULT(S_OK, "WM_SIZE: Resizing buffers", __FILE__, __LINE__);
             CleanupRenderTarget();
             pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, 0);
             CreateRenderTarget();
@@ -107,11 +110,14 @@ LRESULT WINAPI UI::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         return 0;
 
     case WM_SYSCOMMAND:
-        if ((wParam & 0xfff0) == SC_KEYMENU)
+        if ((wParam & 0xfff0) == SC_KEYMENU) {
+            MyLogger::LogHRESULT(S_OK, "WM_SYSCOMMAND: SC_KEYMENU detected", __FILE__, __LINE__);
             return 0;
+        }
         break;
 
     case WM_DESTROY:
+        MyLogger::LogHRESULT(S_OK, "WM_DESTROY: Posting Quit Message", __FILE__, __LINE__);
         ::PostQuitMessage(0);
         return 0;
 
@@ -119,6 +125,7 @@ LRESULT WINAPI UI::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports) {
             const RECT* suggested_rect = (RECT*)lParam;
             ::SetWindowPos(hWnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left, suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE);
+            MyLogger::LogHRESULT(S_OK, "WM_DPICHANGED: Scaling viewports", __FILE__, __LINE__);
         }
         break;
 
@@ -131,111 +138,157 @@ LRESULT WINAPI UI::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 }
 
 void UI::Render() {
-    MyLogger::LogHRESULT(S_OK, "UI::Render called", __FILE__, __LINE__);
+    try {
+        MyLogger::LogHRESULT(S_OK, "UI::Render called", __FILE__, __LINE__);
 
-    ImGui_ImplWin32_EnableDpiAwareness();
-    const WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, _T("ImGui Standalone"), nullptr };
-    ::RegisterClassEx(&wc);
-    const HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("ImGui Standalone"), WS_OVERLAPPEDWINDOW, 100, 100, 50, 50, NULL, NULL, wc.hInstance, NULL);
+        ImGui_ImplWin32_EnableDpiAwareness();
+        MyLogger::LogHRESULT(S_OK, "DPI awareness enabled", __FILE__, __LINE__);
 
-    if (!CreateDeviceD3D(hwnd)) {
-        CleanupDeviceD3D();
-        ::UnregisterClass(wc.lpszClassName, wc.hInstance);
-        return;
-    }
+        const WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, _T("ImGui Standalone"), nullptr };
+        ::RegisterClassEx(&wc);
+        MyLogger::LogHRESULT(S_OK, "Window class registered", __FILE__, __LINE__);
 
-    ::ShowWindow(hwnd, SW_HIDE);
-    ::UpdateWindow(hwnd);
+        const HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("ImGui Standalone"), WS_OVERLAPPEDWINDOW, 100, 100, 50, 50, NULL, NULL, wc.hInstance, NULL);
+        MyLogger::LogHRESULT(S_OK, "Window created", __FILE__, __LINE__);
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-
-    ImGui::StyleColorsDark();
-
-    ImGuiStyle& style = ImGui::GetStyle();
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-        style.WindowRounding = 4.0f;
-        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-    }
-
-    const HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-    MONITORINFO info = {};
-    info.cbSize = sizeof(MONITORINFO);
-    GetMonitorInfo(monitor, &info);
-    const int monitor_height = info.rcMonitor.bottom - info.rcMonitor.top;
-
-    if (monitor_height > 1080) {
-        const float fScale = 2.0f;
-        ImFontConfig cfg;
-        cfg.SizePixels = 13 * fScale;
-        ImGui::GetIO().Fonts->AddFontDefault(&cfg);
-    }
-
-    ImGui::GetIO().IniFilename = nullptr;
-
-    ImGui_ImplWin32_Init(hwnd);
-    ImGui_ImplDX11_Init(pd3dDevice, pd3dDeviceContext);
-
-    const ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
-    bool bDone = false;
-
-    while (!bDone) {
-        MSG msg;
-        while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
-            ::TranslateMessage(&msg);
-            ::DispatchMessage(&msg);
-            if (msg.message == WM_QUIT)
-                bDone = true;
+        if (!CreateDeviceD3D(hwnd)) {
+            CleanupDeviceD3D();
+            ::UnregisterClass(wc.lpszClassName, wc.hInstance);
+            MyLogger::LogHRESULT(E_FAIL, "Failed to create D3D device", __FILE__, __LINE__);
+            return;
         }
 
-        if (GetAsyncKeyState(VK_END) & 1)
-            bDone = true;
+        ::ShowWindow(hwnd, SW_HIDE);
+        ::UpdateWindow(hwnd);
 
-        if (bDone)
-            break;
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        MyLogger::LogHRESULT(S_OK, "ImGui context created", __FILE__, __LINE__);
 
-        ImGui_ImplDX11_NewFrame();
-        ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
-        {
-            Drawing::Draw();
-        }
-        ImGui::EndFrame();
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        MyLogger::LogHRESULT(S_OK, "ImGui configuration set", __FILE__, __LINE__);
 
-        ImGui::Render();
-        const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
-        pd3dDeviceContext->OMSetRenderTargets(1, &pMainRenderTargetView, nullptr);
-        pd3dDeviceContext->ClearRenderTargetView(pMainRenderTargetView, clear_color_with_alpha);
-        ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+        ImGui::StyleColorsDark();
 
+        ImGuiStyle& style = ImGui::GetStyle();
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-            ImGui::UpdatePlatformWindows();
-            ImGui::RenderPlatformWindowsDefault();
+            style.WindowRounding = 4.0f;
+            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
         }
 
-        pSwapChain->Present(1, 0);
+        const HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        MONITORINFO info = {};
+        info.cbSize = sizeof(MONITORINFO);
+        GetMonitorInfo(monitor, &info);
+        const int monitor_height = info.rcMonitor.bottom - info.rcMonitor.top;
 
-#ifndef _WINDLL
-        if (!Drawing::isActive())
-            break;
-#endif
+        if (monitor_height > 1080) {
+            const float fScale = 2.0f;
+            ImFontConfig cfg;
+            cfg.SizePixels = 13 * fScale;
+            ImGui::GetIO().Fonts->AddFontDefault(&cfg);
+            MyLogger::LogHRESULT(S_OK, "High-DPI settings applied", __FILE__, __LINE__);
+        }
+
+        ImGui::GetIO().IniFilename = nullptr;
+
+        ImGui_ImplWin32_Init(hwnd);
+        ImGui_ImplDX11_Init(pd3dDevice, pd3dDeviceContext);
+        MyLogger::LogHRESULT(S_OK, "ImGui Win32 and DX11 initialized", __FILE__, __LINE__);
+
+        const ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+        bool bDone = false;
+
+        while (!bDone) {
+            MyLogger::LogHRESULT(S_OK, "UI Message Loop: Start", __FILE__, __LINE__);
+
+            MSG msg;
+            while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
+                ::TranslateMessage(&msg);
+                ::DispatchMessage(&msg);
+
+                if (msg.message == WM_QUIT) {
+                    MyLogger::LogHRESULT(S_OK, "UI Message Loop: WM_QUIT received, exiting loop", __FILE__, __LINE__);
+                    bDone = true;
+                }
+            }
+
+            if (GetAsyncKeyState(VK_END) & 1) {
+                MyLogger::LogHRESULT(S_OK, "UI Message Loop: VK_END pressed, exiting loop", __FILE__, __LINE__);
+                bDone = true;
+            }
+
+            if (bDone)
+                break;
+
+            ImGui_ImplDX11_NewFrame();
+            ImGui_ImplWin32_NewFrame();
+            ImGui::NewFrame();
+            {
+                MyLogger::LogHRESULT(S_OK, "UI Message Loop: ImGui frame setup", __FILE__, __LINE__);
+                Drawing::Draw();
+            }
+            ImGui::EndFrame();
+
+            ImGui::Render();
+            const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
+            pd3dDeviceContext->OMSetRenderTargets(1, &pMainRenderTargetView, nullptr);
+            pd3dDeviceContext->ClearRenderTargetView(pMainRenderTargetView, clear_color_with_alpha);
+            ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
+            if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+                ImGui::UpdatePlatformWindows();
+                ImGui::RenderPlatformWindowsDefault();
+                MyLogger::LogHRESULT(S_OK, "UI Message Loop: Viewports updated and rendered", __FILE__, __LINE__);
+            }
+
+            MyLogger::LogHRESULT(S_OK, "UI Message Loop: Before Present", __FILE__, __LINE__);
+
+            HRESULT presentResult = pSwapChain->Present(1, 0);
+
+            if (FAILED(presentResult)) {
+                MyLogger::LogHRESULT(presentResult, "UI Message Loop: Present failed", __FILE__, __LINE__);
+                // You may want to handle the failure appropriately, depending on your application.
+            }
+            else {
+                MyLogger::LogHRESULT(S_OK, "UI Message Loop: Present succeeded", __FILE__, __LINE__);
+            }
+
+            MyLogger::LogHRESULT(S_OK, "UI Message Loop: After Present", __FILE__, __LINE__);
+
+            #ifndef _WINDLL
+            if (!Drawing::isActive()) {
+                MyLogger::LogHRESULT(S_OK, "UI Message Loop: Drawing is not active, exiting loop", __FILE__, __LINE__);
+                break;
+            }
+            #endif
+
+            MyLogger::LogHRESULT(S_OK, "UI Message Loop: Iteration completed", __FILE__, __LINE__);
+        }
+
+
+        ImGui_ImplDX11_Shutdown();
+        ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext();
+
+        CleanupDeviceD3D();
+        ::DestroyWindow(hwnd);
+        ::UnregisterClass(wc.lpszClassName, wc.hInstance);
+        MyLogger::LogHRESULT(S_OK, "UI cleanup completed", __FILE__, __LINE__);
+
+        #ifdef _WINDLL
+        CreateThread(nullptr, NULL, (LPTHREAD_START_ROUTINE)FreeLibrary, hCurrentModule, NULL, nullptr);
+        #endif
+
+        MyLogger::LogHRESULT(S_OK, "UI::Render completed", __FILE__, __LINE__);
     }
-
-    ImGui_ImplDX11_Shutdown();
-    ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
-
-    CleanupDeviceD3D();
-    ::DestroyWindow(hwnd);
-    ::UnregisterClass(wc.lpszClassName, wc.hInstance);
-
-#ifdef _WINDLL
-    CreateThread(nullptr, NULL, (LPTHREAD_START_ROUTINE)FreeLibrary, hCurrentModule, NULL, nullptr);
-#endif
-
-    MyLogger::LogHRESULT(S_OK, "UI::Render completed", __FILE__, __LINE__);
+    catch (const std::exception& e) {
+        MyLogger::LogHRESULT(E_FAIL, e.what(), __FILE__, __LINE__);
+    }
+    catch (...) {
+        MyLogger::LogHRESULT(E_FAIL, "Unknown exception occurred", __FILE__, __LINE__);
+    }
 }
