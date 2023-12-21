@@ -221,29 +221,44 @@ void UI::Render() {
                 bDone = true;
             }
 
-            if (bDone)
+            if (bDone) {
+                MyLogger::LogHRESULT(S_OK, "UI Message Loop: Loop exited", __FILE__, __LINE__);
                 break;
+            }
 
             ImGui_ImplDX11_NewFrame();
+            MyLogger::LogHRESULT(S_OK, "UI Message Loop: DX11 NewFrame", __FILE__, __LINE__);
             ImGui_ImplWin32_NewFrame();
+            MyLogger::LogHRESULT(S_OK, "UI Message Loop: Win32 NewFrame", __FILE__, __LINE__);
             ImGui::NewFrame();
             {
-                MyLogger::LogHRESULT(S_OK, "UI Message Loop: ImGui frame setup", __FILE__, __LINE__);
+                MyLogger::LogHRESULT(S_OK, "UI Message Loop: ImGui NewFrame", __FILE__, __LINE__);
                 Drawing::Draw();
+                MyLogger::LogHRESULT(S_OK, "UI Message Loop: ImGui NewFrame Drawing completed", __FILE__, __LINE__);
             }
             ImGui::EndFrame();
-
+            MyLogger::LogHRESULT(S_OK, "UI Message Loop: ImGui EndFrame", __FILE__, __LINE__);
             ImGui::Render();
+            MyLogger::LogHRESULT(S_OK, "UI Message Loop: ImGui Render", __FILE__, __LINE__);
+
             const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
+            MyLogger::LogHRESULT(S_OK, "UI Message Loop: Colours Cleared", __FILE__, __LINE__);
             pd3dDeviceContext->OMSetRenderTargets(1, &pMainRenderTargetView, nullptr);
+            MyLogger::LogHRESULT(S_OK, "UI Message Loop: Render Target Set", __FILE__, __LINE__);
             pd3dDeviceContext->ClearRenderTargetView(pMainRenderTargetView, clear_color_with_alpha);
+            MyLogger::LogHRESULT(S_OK, "UI Message Loop: Render Target Cleared", __FILE__, __LINE__);
+
             ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+            MyLogger::LogHRESULT(S_OK, "UI Message Loop: ImGui Draw Data Rendered", __FILE__, __LINE__);
 
             if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
                 ImGui::UpdatePlatformWindows();
+                MyLogger::LogHRESULT(S_OK, "UI Message Loop: Viewports Updated", __FILE__, __LINE__);
+
                 ImGui::RenderPlatformWindowsDefault();
-                MyLogger::LogHRESULT(S_OK, "UI Message Loop: Viewports updated and rendered", __FILE__, __LINE__);
+                MyLogger::LogHRESULT(S_OK, "UI Message Loop: Viewports Rendered", __FILE__, __LINE__);
             }
+
 
             MyLogger::LogHRESULT(S_OK, "UI Message Loop: Before Present", __FILE__, __LINE__);
 
