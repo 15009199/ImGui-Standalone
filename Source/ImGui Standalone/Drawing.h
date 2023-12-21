@@ -2,7 +2,6 @@
 #define DRAWING_H
 
 #include "pch.h"
-#include "Logger.h"
 
 class Drawing
 {
